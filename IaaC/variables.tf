@@ -22,3 +22,18 @@ variable "cancel_ack_req" {
 variable "runtime" {
   type = string
 }
+variable "book_sqs_queue" {
+  type = string
+}
+variable "max_message_size" {
+  type = number
+}
+variable "receive_wait_time_seconds" {
+  type = number
+}
+variable "message_retention_seconds" {
+  type = number
+}
+variable "cancel_sqs_queue" {
+  type = string
+}

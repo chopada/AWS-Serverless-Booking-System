@@ -74,6 +74,11 @@ resource "aws_lambda_function" "booking_ack_req" {
   filename      = "../${var.book_ack_req}.zip" # Replace with your actual Lambda code
   role          = aws_iam_role.lambda_execution_role.arn
   # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL = aws_sqs_queue.book_queue.url
+    }
+  }
 }
 resource "aws_lambda_permission" "book_lambda_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -102,6 +107,11 @@ resource "aws_lambda_function" "cancel_ack_req" {
   filename      = "../${var.cancel_ack_req}.zip" # Replace with your actual Lambda code
   role          = aws_iam_role.lambda_execution_role.arn
   # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL = aws_sqs_queue.cancel_queue.url
+    }
+  }
 }
 resource "aws_lambda_permission" "cancel_lambda_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -119,4 +129,72 @@ resource "aws_api_gateway_integration" "cancel_integration" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = aws_lambda_function.cancel_ack_req.invoke_arn
+}
+
+#booking queue
+resource "aws_sqs_queue" "book_queue" {
+  name                      = var.book_sqs_queue
+  max_message_size          = var.max_message_size
+  message_retention_seconds = var.message_retention_seconds
+  receive_wait_time_seconds = var.receive_wait_time_seconds
+  tags = {
+    Environment = var.book_sqs_queue
+  }
+}
+
+
+# Optionally, you can grant the Lambda function permission to send messages to the SQS queue
+resource "aws_sqs_queue_policy" "book_queue_policy" {
+  queue_url = aws_sqs_queue.book_queue.url
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = "*",
+        Action    = "sqs:SendMessage",
+        Resource  = aws_sqs_queue.book_queue.arn,
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_lambda_function.booking_ack_req.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+#cancel queue
+resource "aws_sqs_queue" "cancel_queue" {
+  name                      = var.cancel_sqs_queue
+  max_message_size          = var.max_message_size
+  message_retention_seconds = var.message_retention_seconds
+  receive_wait_time_seconds = var.receive_wait_time_seconds
+  tags = {
+    Environment = var.cancel_sqs_queue
+  }
+}
+
+
+# Optionally, you can grant the Lambda function permission to send messages to the SQS queue
+resource "aws_sqs_queue_policy" "cancel_queue_policy" {
+  queue_url = aws_sqs_queue.cancel_queue.url
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = "*",
+        Action    = "sqs:SendMessage",
+        Resource  = aws_sqs_queue.cancel_queue.arn,
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_lambda_function.cancel_ack_req.arn
+          }
+        }
+      }
+    ]
+  })
 }
