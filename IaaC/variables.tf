@@ -37,3 +37,6 @@ variable "message_retention_seconds" {
 variable "cancel_sqs_queue" {
   type = string
 }
+variable "book_payment_function" {
+  type = string
+}
