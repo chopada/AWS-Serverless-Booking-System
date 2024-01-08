@@ -65,7 +65,27 @@ resource "aws_iam_role" "lambda_execution_role" {
 }
 EOF
 }
+resource "aws_iam_role_policy" "lambda_execution_role_policy" {
+  name = "CloudWatchLogsPolicy"
+  role = aws_iam_role.lambda_execution_role.id
 
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
 # Create Lambda function for booking 
 resource "aws_lambda_function" "booking_ack_req" {
   function_name = var.book_ack_req
@@ -87,7 +107,7 @@ resource "aws_lambda_permission" "book_lambda_permission" {
   principal     = "apigateway.amazonaws.com"
 
   # API Gateway resource ARN
-  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*/${aws_api_gateway_method.book_method.http_method}${aws_api_gateway_resource.book_resource.path}"
+  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/${aws_api_gateway_method.book_method.http_method}${aws_api_gateway_resource.book_resource.path}"
 }
 resource "aws_api_gateway_integration" "book_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api_gateway.id
@@ -120,7 +140,7 @@ resource "aws_lambda_permission" "cancel_lambda_permission" {
   principal     = "apigateway.amazonaws.com"
 
   # API Gateway resource ARN
-  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*/${aws_api_gateway_method.cancel_method.http_method}${aws_api_gateway_resource.cancel_resource.path}"
+  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/${aws_api_gateway_method.cancel_method.http_method}${aws_api_gateway_resource.cancel_resource.path}"
 }
 resource "aws_api_gateway_integration" "cancel_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api_gateway.id
