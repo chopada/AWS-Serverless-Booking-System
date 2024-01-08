@@ -86,6 +86,26 @@ resource "aws_iam_role_policy" "lambda_execution_role_policy" {
 }
 EOF
 }
+resource "aws_iam_role_policy" "lambda_execution_role_policy2" {
+  name = "SQSLogsPolicy"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "sqs:*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
 # Create Lambda function for booking 
 resource "aws_lambda_function" "booking_ack_req" {
   function_name = var.book_ack_req
@@ -163,28 +183,6 @@ resource "aws_sqs_queue" "book_queue" {
 }
 
 
-# Optionally, you can grant the Lambda function permission to send messages to the SQS queue
-resource "aws_sqs_queue_policy" "book_queue_policy" {
-  queue_url = aws_sqs_queue.book_queue.url
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = "*",
-        Action    = "sqs:SendMessage",
-        Resource  = aws_sqs_queue.book_queue.arn,
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = aws_lambda_function.booking_ack_req.arn
-          }
-        }
-      }
-    ]
-  })
-}
-
 #cancel queue
 resource "aws_sqs_queue" "cancel_queue" {
   name                      = var.cancel_sqs_queue
@@ -197,24 +195,3 @@ resource "aws_sqs_queue" "cancel_queue" {
 }
 
 
-# Optionally, you can grant the Lambda function permission to send messages to the SQS queue
-resource "aws_sqs_queue_policy" "cancel_queue_policy" {
-  queue_url = aws_sqs_queue.cancel_queue.url
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = "*",
-        Action    = "sqs:SendMessage",
-        Resource  = aws_sqs_queue.cancel_queue.arn,
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = aws_lambda_function.cancel_ack_req.arn
-          }
-        }
-      }
-    ]
-  })
-}
