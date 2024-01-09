@@ -43,3 +43,15 @@ variable "book_payment_function" {
 variable "cancel_payment_function" {
   type = string
 }
+variable "book_sns" {
+  type = string
+}
+variable "cancel_sns" {
+  type = string
+}
+variable "cancel_sqs_success" {
+  type = string
+}
+variable "book_sqs_success" {
+  type = string
+}

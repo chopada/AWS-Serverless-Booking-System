@@ -4,6 +4,8 @@ const AWS = require('aws-sdk');
 // Create an SQS service object
 const sqsQueueUrl = process.env.QUEUE_URL;
 const sqsClient = new AWS.SQS();
+const snsTopicARN = process.env.TOPIC_ARN;
+const snsClient = new AWS.SNS();
 
 
 exports.lambda_handler = async (event, context) => {
@@ -17,11 +19,30 @@ exports.lambda_handler = async (event, context) => {
             console.log('Attributes:', messageAttributes);
             console.log('Receipt Handle:', receiptHandle);
 
-            const id = messageAttributes.id.stringValue;
-            const count = messageAttributes.count.stringValue;
-            console.log('ID:', id);
-            console.log('Count:', count);
-            // Your processing logic goes here
+            const id_value = messageAttributes.id.stringValue;
+            const count_value = messageAttributes.count.stringValue;
+            // Add Business Logic For payment
+            //
+            console.log('ID:', id_value);
+            console.log('Count:', count_value);
+            Attributes_SNS = {
+                id: {
+                    DataType: 'Number',
+                    StringValue: id_value,
+                },
+                count: {
+                    DataType: 'Number',
+                    StringValue: count_value,
+                }
+            }
+            const params = {
+                TopicArn: snsTopicARN,
+                Message: JSON.stringify(messageAttributes),
+                MessageAttributes: Attributes_SNS
+            };
+
+            const result = await snsClient.publish(params).promise();
+            console.log('Message Send Successfully & Message Id ::', result.MessageId)
 
             // Delete the processed message from the queue
             await deleteMessage(receiptHandle, sqsQueueUrl);

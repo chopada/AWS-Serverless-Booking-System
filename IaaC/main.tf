@@ -195,11 +195,6 @@ resource "aws_sqs_queue" "cancel_queue" {
 }
 
 
-
-
-
-
-
 # payment lambda function for book
 # IAM Role for lambda execution with
 resource "aws_iam_role" "lambda_execution_role_payment" {
@@ -242,7 +237,7 @@ resource "aws_iam_role_policy" "lambda_execution_role_payment_policy" {
 EOF
 }
 resource "aws_iam_role_policy" "lambda_execution_role_payment_policy1" {
-  name = "SNSPolicy"
+  name = "SNSandSQSPolicy"
   role = aws_iam_role.lambda_execution_role_payment.name
 
   policy = <<EOF
@@ -274,6 +269,7 @@ resource "aws_lambda_function" "booking_payment_success" {
   environment {
     variables = {
       QUEUE_URL = aws_sqs_queue.book_queue.url
+      TOPIC_ARN = aws_sns_topic.book_sns.arn
     }
   }
 }
@@ -305,6 +301,7 @@ resource "aws_lambda_function" "cancel_payment_success" {
   environment {
     variables = {
       QUEUE_URL = aws_sqs_queue.cancel_queue.url
+      TOPIC_ARN = aws_sns_topic.cancel_sns.arn
     }
   }
 }
@@ -322,4 +319,85 @@ resource "aws_lambda_permission" "cancel_payment_lambda_permission" {
 resource "aws_lambda_event_source_mapping" "sqs_trigger_2" {
   event_source_arn = aws_sqs_queue.cancel_queue.arn
   function_name    = aws_lambda_function.cancel_payment_success.arn
+}
+
+
+
+# SNS Topic for Booking
+resource "aws_sns_topic" "book_sns" {
+  name = var.book_sns
+
+}
+resource "aws_sqs_queue" "book_sqs_success" {
+  name = var.book_sqs_success
+}
+data "aws_iam_policy_document" "book_sqs_policy" {
+  statement {
+    sid    = "SQS_Book_Policy"
+    effect = "Allow"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.book_sqs_success.arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_sns_topic.book_sns.arn]
+    }
+  }
+
+}
+resource "aws_sns_topic_subscription" "book_subs" {
+  topic_arn = aws_sns_topic.book_sns.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.book_sqs_success.arn
+}
+
+# SNS Topic for Cancel
+resource "aws_sns_topic" "cancel_sns" {
+  name = var.cancel_sns
+
+}
+
+resource "aws_sqs_queue_policy" "book_policy_attach" {
+  queue_url = aws_sqs_queue.book_sqs_success.id
+  policy    = data.aws_iam_policy_document.book_sqs_policy.json
+}
+resource "aws_sns_topic_subscription" "cancel_subs" {
+  topic_arn = aws_sns_topic.cancel_sns.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.cancel_sqs_success.arn
+}
+resource "aws_sqs_queue" "cancel_sqs_success" {
+  name = var.cancel_sqs_success
+}
+data "aws_iam_policy_document" "cancel_sqs_policy" {
+  statement {
+    sid    = "SQS_Cancel_Policy"
+    effect = "Allow"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.cancel_sqs_success.arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_sns_topic.cancel_sns.arn]
+    }
+  }
+
+}
+resource "aws_sqs_queue_policy" "cancel_policy_attach" {
+  queue_url = aws_sqs_queue.cancel_sqs_success.id
+  policy    = data.aws_iam_policy_document.cancel_sqs_policy.json
 }
