@@ -20,15 +20,25 @@ exports.lambda_handler = async (event, context) => {
         }
 
 
+        const messageAttributes = {
+            id: {
+                DataType: 'Number',
+                StringValue: idValue.toString(),
+            },
+            count: {
+                DataType: 'Number',
+                StringValue: countValue.toString(),
+            },
+        };
         const messageBody = {
             id: idValue,
             count: countValue,
         };
-
         // Sending the message to SQS
 
         await sqsClient.sendMessage({
             QueueUrl: sqsQueueUrl,
+            MessageAttributes: messageAttributes,
             MessageBody: JSON.stringify(messageBody),
         }).promise();
 
@@ -36,8 +46,7 @@ exports.lambda_handler = async (event, context) => {
         const response = {
             statusCode: 200,
             body: JSON.stringify({
-                id: idValue,
-                count: countValue,
+                messageBody: messageBody,
                 message: 'Values sent to SQS queue successfully',
             }),
         };

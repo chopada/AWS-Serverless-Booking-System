@@ -40,3 +40,6 @@ variable "cancel_sqs_queue" {
 variable "book_payment_function" {
   type = string
 }
+variable "cancel_payment_function" {
+  type = string
+}

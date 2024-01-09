@@ -87,7 +87,7 @@ resource "aws_iam_role_policy" "lambda_execution_role_policy" {
 EOF
 }
 resource "aws_iam_role_policy" "lambda_execution_role_policy2" {
-  name = "SQSLogsPolicy"
+  name = "SQSPolicy"
   role = aws_iam_role.lambda_execution_role.id
 
   policy = <<EOF
@@ -195,3 +195,131 @@ resource "aws_sqs_queue" "cancel_queue" {
 }
 
 
+
+
+
+
+
+# payment lambda function for book
+# IAM Role for lambda execution with
+resource "aws_iam_role" "lambda_execution_role_payment" {
+  name = "lambda_execution_role_payment_function"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "lambda_execution_role_payment_policy" {
+  name = "CloudWatchLogsPolicy"
+  role = aws_iam_role.lambda_execution_role_payment.name
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "lambda_execution_role_payment_policy1" {
+  name = "SNSPolicy"
+  role = aws_iam_role.lambda_execution_role_payment.name
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "sns:*",
+                "sqs:*"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
+# Create Lambda function for booking 
+resource "aws_lambda_function" "booking_payment_success" {
+  function_name = var.book_payment_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.book_payment_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.lambda_execution_role_payment.arn
+  timeout       = 10
+  # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL = aws_sqs_queue.book_queue.url
+    }
+  }
+}
+
+resource "aws_lambda_permission" "book_payment_lambda_permission" {
+  statement_id  = "AllowExecutionFromSQS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.booking_payment_success.arn
+  principal     = "sqs.amazonaws.com"
+
+  # API Gateway resource ARN
+  source_arn = aws_sqs_queue.book_queue.arn
+}
+
+resource "aws_lambda_event_source_mapping" "sqs_trigger" {
+  event_source_arn = aws_sqs_queue.book_queue.arn
+  function_name    = aws_lambda_function.booking_payment_success.arn
+}
+
+# Create Lambda function for cancel
+resource "aws_lambda_function" "cancel_payment_success" {
+  function_name = var.cancel_payment_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.cancel_payment_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.lambda_execution_role_payment.arn
+  timeout       = 10
+  # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL = aws_sqs_queue.cancel_queue.url
+    }
+  }
+}
+
+resource "aws_lambda_permission" "cancel_payment_lambda_permission" {
+  statement_id  = "AllowExecutionFromSQS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cancel_payment_success.arn
+  principal     = "sqs.amazonaws.com"
+
+  # API Gateway resource ARN
+  source_arn = aws_sqs_queue.cancel_queue.arn
+}
+
+resource "aws_lambda_event_source_mapping" "sqs_trigger_2" {
+  event_source_arn = aws_sqs_queue.cancel_queue.arn
+  function_name    = aws_lambda_function.cancel_payment_success.arn
+}
