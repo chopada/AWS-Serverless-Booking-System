@@ -55,3 +55,37 @@ variable "cancel_sqs_success" {
 variable "book_sqs_success" {
   type = string
 }
+variable "book_db_entry_function" {
+  type = string
+}
+variable "admin_table" {
+  type = string
+}
+variable "billing_mode" {
+  type = string
+}
+variable "admin_attribute1" {
+  type = string
+}
+variable "admin_attribute2" {
+  type = string
+}
+variable "attribute_type_number" {
+  type = string
+}
+
+variable "attribute_type_string" {
+  type = string
+}
+variable "rcus" {
+  type = number
+}
+variable "wcus" {
+  type = number
+}
+variable "user_table" {
+  type = string
+}
+variable "user_attribute1" {
+  type = string
+}

@@ -280,7 +280,6 @@ resource "aws_lambda_permission" "book_payment_lambda_permission" {
   function_name = aws_lambda_function.booking_payment_success.arn
   principal     = "sqs.amazonaws.com"
 
-  # API Gateway resource ARN
   source_arn = aws_sqs_queue.book_queue.arn
 }
 
@@ -357,6 +356,10 @@ resource "aws_sns_topic_subscription" "book_subs" {
   protocol  = "sqs"
   endpoint  = aws_sqs_queue.book_sqs_success.arn
 }
+resource "aws_sqs_queue_policy" "book_policy_attach" {
+  queue_url = aws_sqs_queue.book_sqs_success.id
+  policy    = data.aws_iam_policy_document.book_sqs_policy.json
+}
 
 # SNS Topic for Cancel
 resource "aws_sns_topic" "cancel_sns" {
@@ -364,10 +367,6 @@ resource "aws_sns_topic" "cancel_sns" {
 
 }
 
-resource "aws_sqs_queue_policy" "book_policy_attach" {
-  queue_url = aws_sqs_queue.book_sqs_success.id
-  policy    = data.aws_iam_policy_document.book_sqs_policy.json
-}
 resource "aws_sns_topic_subscription" "cancel_subs" {
   topic_arn = aws_sns_topic.cancel_sns.arn
   protocol  = "sqs"
@@ -400,4 +399,127 @@ data "aws_iam_policy_document" "cancel_sqs_policy" {
 resource "aws_sqs_queue_policy" "cancel_policy_attach" {
   queue_url = aws_sqs_queue.cancel_sqs_success.id
   policy    = data.aws_iam_policy_document.cancel_sqs_policy.json
+}
+
+### DynamoDB Tables
+resource "aws_dynamodb_table" "admin_table" {
+  name           = var.admin_table
+  hash_key       = var.admin_attribute1
+  range_key      = var.admin_attribute2
+  billing_mode   = var.billing_mode
+  read_capacity  = var.rcus
+  write_capacity = var.wcus
+  attribute {
+    name = var.admin_attribute1
+    type = var.attribute_type_string
+  }
+  attribute {
+    name = var.admin_attribute2
+    type = var.attribute_type_string
+  }
+}
+
+# User DynamoDB Table
+resource "aws_dynamodb_table" "user_table" {
+  name           = var.user_table
+  hash_key       = var.user_attribute1
+  billing_mode   = var.billing_mode
+  read_capacity  = var.rcus
+  write_capacity = var.wcus
+  attribute {
+    name = var.user_attribute1
+    type = var.attribute_type_string
+  }
+}
+
+# payment lambda function for book
+# IAM Role for lambda execution with
+resource "aws_iam_role" "lambda_execution_db_entry" {
+  name = "lambda_execution_role_db_entry"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "lambda_execution_db_entry_policy" {
+  name = "CloudWatchLogsSQSPolicy"
+  role = aws_iam_role.lambda_execution_db_entry.name
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "sqs:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "dynamodb_write_policy" {
+  name   = "dynamodb_write_policy"
+  role   = aws_iam_role.lambda_execution_db_entry.name
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem"
+        ],
+        "Resource" : "*"
+      }
+    ]
+}
+EOF
+}
+#Create Lambda function for dyanamoDB entry 
+resource "aws_lambda_function" "book_db_entry_function" {
+  function_name = var.book_db_entry_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.book_db_entry_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.lambda_execution_db_entry.arn
+  timeout       = 10
+  # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL                 = aws_sqs_queue.book_sqs_success.url
+      DYNAMODB_TABLE_NAME_ADMIN = aws_dynamodb_table.admin_table.name,
+      DYNAMODB_TABLE_NAME_USER  = aws_dynamodb_table.user_table.name,
+    }
+  }
+}
+resource "aws_lambda_permission" "book_entry_lambda_permission" {
+  statement_id  = "AllowExecutionFromSQS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.book_db_entry_function.arn
+  principal     = "sqs.amazonaws.com"
+
+  source_arn = aws_sqs_queue.book_sqs_success.arn
+}
+resource "aws_lambda_event_source_mapping" "sqs_trigger_db_entry" {
+  event_source_arn = aws_sqs_queue.book_sqs_success.arn
+  function_name    = aws_lambda_function.book_db_entry_function.arn
 }
