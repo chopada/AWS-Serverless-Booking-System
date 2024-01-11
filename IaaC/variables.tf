@@ -70,9 +70,6 @@ variable "admin_attribute1" {
 variable "admin_attribute2" {
   type = string
 }
-variable "attribute_type_number" {
-  type = string
-}
 
 variable "attribute_type_string" {
   type = string

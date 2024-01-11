@@ -10,11 +10,6 @@ ZIP_FILE_4='cancel-payment-function.zip'
 FOLDER_4='cancel-payment-function'
 ZIP_FILE_5='book-entry-function.zip'
 FOLDER_5='book-entry-function'
-# Create the zip file
-cd "$FOLDER_2"/
-zip -r "$ZIP_FILE_2" *
-mv "$ZIP_FILE_2" ../.
-cd ..
 
 # Check if the zip file already exists
 if [ -e "$ZIP_FILE_1" ]; then

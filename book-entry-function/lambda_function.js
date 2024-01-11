@@ -2,51 +2,21 @@ const AWS = require('aws-sdk');
 const { error } = require('console');
 
 const sqsQueueUrl = process.env.QUEUE_URL
-const dynamoDB_Admin_Table = process.env.DYNAMODB_TABLE_NAME_ADMIN
-const dynamoDB_User_Table = process.env.DYNAMODB_TABLE_NAME_USER
+const dynamoDB_Table_NAME = process.env.DYNAMODB_TABLE_NAME
+const dynamoDB_Hash_Key = process.env.DYNAMODB_HASH_KEY
+const dynamoDB_Range_Key = process.env.DYNAMODB_RANGE_KEY
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
-async function updateShowData(user_id_params, show_id_params) {
-    try {
-        // Admin Side Data Update
-        const showId = show_id_params;
-        const newBookedUser = {
-            user_id: user_id_params
-        };
-        const updateExpression = 'SET #bu = list_append(if_not_exists(#bu, :empty_list), :new_user)';
-        const expressionAttributeNames = { '#bu': 'booked_users', '#tc': 'Ticket_Count' };
-        const expressionAttributeValues = {
-            ':empty_list': [],
-            ':new_user': [newBookedUser],
-            ':decrement': 1
-        };
-        // Decrease ticket_count by 1 if it's greater than 0
-        updateExpression += ' ADD #tc :decrement';
-
-
-        const result = await dynamoDB.update({
-            TableName: dynamoDB_Admin_Table,
-            Key: { SHOW_ID: showId },
-            UpdateExpression: updateExpression,
-            ExpressionAttributeNames: expressionAttributeNames,
-            ExpressionAttributeValues: expressionAttributeValues,
-            ConditionExpression: 'attribute_exists(#tc) AND #tc > :decrement',
-            ReturnValues: 'ALL_NEW' // Optional, returns the updated item
-        }).promise();
-
-        console.log('Update successful:', result);
-        return true;
-    } catch (error) {
-        console.error('Error updating show data:', error);
-        return false;
-    }
-}
 async function addUser(user_id_params, show_id_params) {
     try {
+        console.log(dynamoDB_Table_NAME);
+        console.log(dynamoDB_Hash_Key);
+        console.log(dynamoDB_Range_Key);
         const params = {
-            TableName: dynamoDB_User_Table,
+            TableName: dynamoDB_Table_NAME,
+
             Item: {
-                user_id: user_id_params,
-                show_id: show_id_params
+                [dynamoDB_Range_Key]: user_id_params,
+                [dynamoDB_Hash_Key]: show_id_params
             }
         };
 
@@ -73,9 +43,8 @@ exports.lambda_handler = async (event) => {
             console.log(user_id);
             console.log(show_id);
             console.log("Working GOod");
-            const updateAdminResult = await updateShowData(user_id, show_id);
             const addUserResult = await addUser(user_id, show_id);
-            if (!updateAdminResult && !addUserResult) {
+            if (!addUserResult) {
                 throw new Error("Not Update Successfully");
             }
         }

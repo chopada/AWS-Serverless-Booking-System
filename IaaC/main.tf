@@ -402,7 +402,7 @@ resource "aws_sqs_queue_policy" "cancel_policy_attach" {
 }
 
 ### DynamoDB Tables
-resource "aws_dynamodb_table" "admin_table" {
+resource "aws_dynamodb_table" "booking_table" {
   name           = var.admin_table
   hash_key       = var.admin_attribute1
   range_key      = var.admin_attribute2
@@ -419,18 +419,7 @@ resource "aws_dynamodb_table" "admin_table" {
   }
 }
 
-# User DynamoDB Table
-resource "aws_dynamodb_table" "user_table" {
-  name           = var.user_table
-  hash_key       = var.user_attribute1
-  billing_mode   = var.billing_mode
-  read_capacity  = var.rcus
-  write_capacity = var.wcus
-  attribute {
-    name = var.user_attribute1
-    type = var.attribute_type_string
-  }
-}
+
 
 # payment lambda function for book
 # IAM Role for lambda execution with
@@ -484,6 +473,7 @@ resource "aws_iam_role_policy" "dynamodb_write_policy" {
       {
         "Effect": "Allow",
         "Action": [
+          "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:BatchWriteItem"
@@ -505,9 +495,10 @@ resource "aws_lambda_function" "book_db_entry_function" {
   # Other Lambda function configurations...
   environment {
     variables = {
-      QUEUE_URL                 = aws_sqs_queue.book_sqs_success.url
-      DYNAMODB_TABLE_NAME_ADMIN = aws_dynamodb_table.admin_table.name,
-      DYNAMODB_TABLE_NAME_USER  = aws_dynamodb_table.user_table.name,
+      QUEUE_URL           = aws_sqs_queue.book_sqs_success.url
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.booking_table.name
+      DYNAMODB_HASH_KEY   = aws_dynamodb_table.booking_table.hash_key
+      DYNAMODB_RANGE_KEY  = aws_dynamodb_table.booking_table.range_key
     }
   }
 }
