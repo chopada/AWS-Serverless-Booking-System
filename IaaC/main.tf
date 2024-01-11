@@ -403,12 +403,14 @@ resource "aws_sqs_queue_policy" "cancel_policy_attach" {
 
 ### DynamoDB Tables
 resource "aws_dynamodb_table" "booking_table" {
-  name           = var.admin_table
-  hash_key       = var.admin_attribute1
-  range_key      = var.admin_attribute2
-  billing_mode   = var.billing_mode
-  read_capacity  = var.rcus
-  write_capacity = var.wcus
+  name             = var.admin_table
+  hash_key         = var.admin_attribute1
+  range_key        = var.admin_attribute2
+  billing_mode     = var.billing_mode
+  read_capacity    = var.rcus
+  write_capacity   = var.wcus
+  stream_enabled   = var.streams
+  stream_view_type = var.stream_view
   attribute {
     name = var.admin_attribute1
     type = var.attribute_type_string
@@ -542,4 +544,79 @@ resource "aws_lambda_permission" "cancel_entry_lambda_permission" {
 resource "aws_lambda_event_source_mapping" "sqs_trigger_cancel_db_entry" {
   event_source_arn = aws_sqs_queue.cancel_sqs_success.arn
   function_name    = aws_lambda_function.cancel_db_entry_function.arn
+}
+
+
+
+
+# payment lambda function for book
+# IAM Role for lambda execution with
+resource "aws_iam_role" "lambda_execution_notification" {
+  name = "lambda_execution_notification"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "lambda_execution_notification_policy" {
+  name = "CloudWatchLogsSNSDynamodbPolicy"
+  role = aws_iam_role.lambda_execution_notification.name
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "ses:*",
+        "dynamodb:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+#Create Lambda function for dyanamoDB entry 
+resource "aws_lambda_function" "notification_function" {
+  function_name = var.notification_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.notification_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.lambda_execution_notification.arn
+  timeout       = 10
+  # Other Lambda function configurations...
+  # environment {
+  #   variables = {
+  #   }
+  # }
+}
+
+resource "aws_lambda_permission" "notification_lambda_permission" {
+  statement_id  = "AllowExecutionFromDynamoDB"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.notification_function.arn
+  principal     = "dynamodb.amazonaws.com"
+
+  source_arn = aws_dynamodb_table.booking_table.arn
+}
+resource "aws_lambda_event_source_mapping" "dynamodb_trigger_notification" {
+  event_source_arn  = aws_dynamodb_table.booking_table.stream_arn
+  function_name     = aws_lambda_function.notification_function.arn
+  starting_position = "LATEST"
 }

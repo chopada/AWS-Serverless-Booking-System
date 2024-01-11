@@ -83,9 +83,12 @@ variable "rcus" {
 variable "wcus" {
   type = number
 }
-variable "user_table" {
+variable "streams" {
+  type = bool
+}
+variable "stream_view" {
   type = string
 }
-variable "user_attribute1" {
+variable "notification_function" {
   type = string
 }
