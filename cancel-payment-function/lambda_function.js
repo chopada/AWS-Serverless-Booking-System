@@ -18,21 +18,24 @@ exports.lambda_handler = async (event, context) => {
             console.log('Body:', body);
             console.log('Attributes:', messageAttributes);
             console.log('Receipt Handle:', receiptHandle);
-
-            const id_value = messageAttributes.id.stringValue;
-            const count_value = messageAttributes.count.stringValue;
+            const showid_j = messageAttributes.showid;
+            const userid_j = messageAttributes.userid;
+            console.log(showid_j);
+            console.log(userid_j);
+            const showid_value = messageAttributes.showid.stringValue;
+            const userid_value = messageAttributes.userid.stringValue;
+            console.log('Show ID:', showid_value);
+            console.log('User ID:', userid_value);
             // Add Business Logic For payment
             //
-            console.log('ID:', id_value);
-            console.log('Count:', count_value);
             Attributes_SNS = {
-                id: {
-                    DataType: 'Number',
-                    StringValue: id_value,
+                showid: {
+                    DataType: 'String',
+                    StringValue: showid_value,
                 },
-                count: {
-                    DataType: 'Number',
-                    StringValue: count_value,
+                userid: {
+                    DataType: 'String',
+                    StringValue: userid_value,
                 }
             }
             const params = {

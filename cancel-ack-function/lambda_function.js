@@ -9,30 +9,28 @@ exports.lambda_handler = async (event, context) => {
         const queryParams = event.queryStringParameters || {};
         console.log("Lambda function started....")
         // Extracting values for ID and count
-        const idValue = queryParams.id || null;
-        const countValue = queryParams.count || null;
-
+        const showid_value = queryParams.showid || null;
+        const userid_value = queryParams.userid || null;
+        console.log("showid::", showid_value);
+        console.log("userid::", userid_value);
         // Validating count as a number
 
         //countValue = parseInt(countValue, 10);
-        if (isNaN(countValue)) {
-            throw new Error('Invalid count parameter. Count must be a valid number.');
-        }
 
 
         const messageAttributes = {
-            id: {
-                DataType: 'Number',
-                StringValue: idValue.toString(),
+            showid: {
+                DataType: 'String',
+                StringValue: showid_value.toString(),
             },
-            count: {
-                DataType: 'Number',
-                StringValue: countValue.toString(),
+            userid: {
+                DataType: 'String',
+                StringValue: userid_value.toString(),
             },
         };
         const messageBody = {
-            id: idValue,
-            count: countValue,
+            showid: showid_value,
+            userid: userid_value,
         };
         // Sending the message to SQS
 

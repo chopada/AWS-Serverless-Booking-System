@@ -58,6 +58,9 @@ variable "book_sqs_success" {
 variable "book_db_entry_function" {
   type = string
 }
+variable "cancel_db_entry_function" {
+  type = string
+}
 variable "admin_table" {
   type = string
 }

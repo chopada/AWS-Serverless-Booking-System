@@ -10,6 +10,8 @@ ZIP_FILE_4='cancel-payment-function.zip'
 FOLDER_4='cancel-payment-function'
 ZIP_FILE_5='book-entry-function.zip'
 FOLDER_5='book-entry-function'
+ZIP_FILE_6='cancel-entry-function.zip'
+FOLDER_6='cancel-entry-function'
 
 # Check if the zip file already exists
 if [ -e "$ZIP_FILE_1" ]; then
@@ -65,4 +67,15 @@ fi
 cd "$FOLDER_5"/
 zip -r "$ZIP_FILE_5" *
 mv "$ZIP_FILE_5" ../.
+cd ..
+
+#Check if the zip file already exists
+if [ -e "$ZIP_FILE_6" ]; then
+    # If it exists, remove it
+    rm "$ZIP_FILE_6"
+    echo "$ZIP_FILE_6 Removed Successfully"
+fi
+cd "$FOLDER_6"/
+zip -r "$ZIP_FILE_6" *
+mv "$ZIP_FILE_6" ../.
 cd ..

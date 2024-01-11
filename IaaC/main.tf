@@ -473,10 +473,7 @@ resource "aws_iam_role_policy" "dynamodb_write_policy" {
       {
         "Effect": "Allow",
         "Action": [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:BatchWriteItem"
+          "dynamodb:*"
         ],
         "Resource" : "*"
       }
@@ -513,4 +510,36 @@ resource "aws_lambda_permission" "book_entry_lambda_permission" {
 resource "aws_lambda_event_source_mapping" "sqs_trigger_db_entry" {
   event_source_arn = aws_sqs_queue.book_sqs_success.arn
   function_name    = aws_lambda_function.book_db_entry_function.arn
+}
+
+
+#Create Lambda function for dyanamoDB entry 
+resource "aws_lambda_function" "cancel_db_entry_function" {
+  function_name = var.cancel_db_entry_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.cancel_db_entry_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.lambda_execution_db_entry.arn
+  timeout       = 10
+  # Other Lambda function configurations...
+  environment {
+    variables = {
+      QUEUE_URL           = aws_sqs_queue.cancel_sqs_success.url
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.booking_table.name
+      DYNAMODB_HASH_KEY   = aws_dynamodb_table.booking_table.hash_key
+      DYNAMODB_RANGE_KEY  = aws_dynamodb_table.booking_table.range_key
+    }
+  }
+}
+resource "aws_lambda_permission" "cancel_entry_lambda_permission" {
+  statement_id  = "AllowExecutionFromSQS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cancel_db_entry_function.arn
+  principal     = "sqs.amazonaws.com"
+
+  source_arn = aws_sqs_queue.cancel_sqs_success.arn
+}
+resource "aws_lambda_event_source_mapping" "sqs_trigger_cancel_db_entry" {
+  event_source_arn = aws_sqs_queue.cancel_sqs_success.arn
+  function_name    = aws_lambda_function.cancel_db_entry_function.arn
 }
