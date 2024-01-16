@@ -45,7 +45,19 @@ resource "aws_api_gateway_method" "cancel_method" {
   http_method   = "POST"
   authorization = "NONE"
 }
+# Create /booked resource 
+resource "aws_api_gateway_resource" "booked_resource" {
+  rest_api_id = aws_api_gateway_rest_api.api_gateway.id
+  parent_id   = aws_api_gateway_rest_api.api_gateway.root_resource_id
+  path_part   = var.api_gateway_booked_ticket
+}
 
+resource "aws_api_gateway_method" "booked_ticket_method" {
+  rest_api_id   = aws_api_gateway_rest_api.api_gateway.id
+  resource_id   = aws_api_gateway_resource.booked_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
 # IAM Role for lambda execution with
 resource "aws_iam_role" "lambda_execution_role" {
   name = "lambda_execution_role"
@@ -584,7 +596,7 @@ resource "aws_iam_role_policy" "lambda_execution_notification_policy" {
         "logs:CreateLogStream",
         "logs:PutLogEvents",
         "ses:*",
-        "dynamodb:*"
+                "dynamodb:*"
       ],
       "Resource": "*"
     }
@@ -619,4 +631,92 @@ resource "aws_lambda_event_source_mapping" "dynamodb_trigger_notification" {
   event_source_arn  = aws_dynamodb_table.booking_table.stream_arn
   function_name     = aws_lambda_function.notification_function.arn
   starting_position = "LATEST"
+}
+
+
+# Deploy Api Gateway
+resource "aws_api_gateway_deployment" "deployment" {
+  depends_on  = [aws_api_gateway_integration.book_integration, aws_api_gateway_integration.cancel_integration]
+  rest_api_id = aws_api_gateway_rest_api.api_gateway.id
+  description = "Deployment"
+}
+resource "aws_api_gateway_stage" "dev" {
+  deployment_id = aws_api_gateway_deployment.deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.api_gateway.id
+  stage_name    = "dev"
+}
+
+# IAM Role for lambda execution with
+resource "aws_iam_role" "booked_ticket_list" {
+  name = "lambda_execution_booked_ticket_list"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy" "booked_ticket_policy" {
+  name = "CloudWatchLogsDynamodbPolicy"
+  role = aws_iam_role.booked_ticket_list.name
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "dynamodb:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+resource "aws_lambda_function" "booked_ticket_function" {
+  function_name = var.booked_ticket_function
+  runtime       = var.runtime
+  handler       = "lambda_function.lambda_handler"
+  filename      = "../${var.booked_ticket_function}.zip" # Replace with your actual Lambda code
+  role          = aws_iam_role.booked_ticket_list.arn
+  timeout       = 10
+  #Other Lambda function configurations...
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.booking_table.name
+      DYNAMODB_HASH_KEY   = aws_dynamodb_table.booking_table.hash_key
+      DYNAMODB_RANGE_KEY  = aws_dynamodb_table.booking_table.range_key
+    }
+  }
+}
+resource "aws_lambda_permission" "booked_lambda_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.booked_ticket_function.arn
+  principal     = "apigateway.amazonaws.com"
+
+  # API Gateway resource ARN
+  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/${aws_api_gateway_method.booked_ticket_method.http_method}${aws_api_gateway_resource.booked_resource.path}"
+}
+resource "aws_api_gateway_integration" "booked_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api_gateway.id
+  resource_id             = aws_api_gateway_resource.booked_resource.id
+  http_method             = aws_api_gateway_method.booked_ticket_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.booked_ticket_function.invoke_arn
 }

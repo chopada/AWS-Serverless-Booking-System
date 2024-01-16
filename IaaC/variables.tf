@@ -92,3 +92,10 @@ variable "stream_view" {
 variable "notification_function" {
   type = string
 }
+variable "api_gateway_booked_ticket" {
+  type = string
+}
+
+variable "booked_ticket_function" {
+  type = string
+}
