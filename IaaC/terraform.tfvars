@@ -1,0 +1,35 @@
+region                    = "ap-south-1"
+profile_name              = "terraform_admin"
+api_gateway               = "booking-system-api"
+api_gateway_book_path     = "book"
+api_gateway_cancel_path   = "cancel"
+book_ack_req              = "book-ack-function"
+cancel_ack_req            = "cancel-ack-function"
+runtime                   = "nodejs14.x"
+book_sqs_queue            = "book-sqs-payment"
+cancel_sqs_queue          = "cancel-sqs-payment"
+max_message_size          = 2048
+message_retention_seconds = 86400
+receive_wait_time_seconds = 10
+book_payment_function     = "book-payment-function"
+cancel_payment_function   = "cancel-payment-function"
+book_sns                  = "book-topic"
+cancel_sns                = "cancel-topic"
+book_sqs_success          = "book-sqs-success-payment"
+cancel_sqs_success        = "cancel-sqs-success-payment"
+book_db_entry_function    = "book-entry-function"
+cancel_db_entry_function  = "cancel-entry-function"
+streams                   = true
+stream_view               = "NEW_AND_OLD_IMAGES"
+admin_table               = "booking-table"
+billing_mode              = "PROVISIONED"
+admin_attribute1          = "SHOW_ID"
+admin_attribute2          = "USER_ID"
+attribute_type_string     = "S"
+
+rcus = 5
+wcus = 5
+
+notification_function     = "notification-function"
+api_gateway_booked_ticket = "booked"
+booked_ticket_function    = "booked-ticket-function"
