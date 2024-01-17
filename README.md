@@ -43,7 +43,14 @@ Default region name : aws-region
 Default output format : env
 ```
 
-Run Zip File
+For Deployment install node modules under each lambda function folder through this command
+Run Bash file install node modules
+
+```
+bash install_node_modules.sh
+```
+
+Run Bash file zip create
 
 ```
 bash zip_create.sh
