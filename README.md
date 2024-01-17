@@ -44,26 +44,37 @@ Default output format : env
 ```
 
 For Deployment install node modules under each lambda function folder through this command
-Run Bash file install node modules
 
 ```
 bash install_node_modules.sh
 ```
 
-Run Bash file zip create
+For create zip file of all the lambda function folder through this command
 
 ```
 bash zip_create.sh
 ```
 
-Run following commands in root directory of project
+Go under Iaac folder
+
+```
+cd IaaC
+```
+
+Run following commands to intialize your terraform project
 
 ```
 terraform init
+```
+
+To apply your terraform script to build up your architecture on your aws cloud
+
+```
 terraform apply
 ```
 
-For testing you can call /book and give any random showid and userid in string format  
+For testing
+you can call /book and give any random showid and userid in string format  
 then call /booked to see record exist or not
 then call /cancel to delete record
 
